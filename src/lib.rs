@@ -1,8 +1,17 @@
 mod utils;
 
-// use crate::utils::make_greeting;
+extern crate web_sys;
+
+use crate::utils::set_panic_hook;
 use wasm_bindgen::prelude::*;
 use std::fmt;
+
+// A macro to provide `println!(..)`-style syntax for `console.log` logging.
+macro_rules! log {
+    ( $( $t:tt )* ) => {
+        web_sys::console::log_1(&format!( $( $t )* ).into());
+    }
+}
 
 // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
 // allocator.
@@ -41,7 +50,23 @@ impl fmt::Display for Universe {
 
 #[wasm_bindgen]
 impl Universe {
+    pub fn width(&self) -> u32 {
+        self.width
+    }
+
+    pub fn height(&self) -> u32 {
+        self.height
+    }
+
+    pub fn cells(&self) -> *const Cell {
+        self.cells.as_ptr()
+    }
+}
+
+#[wasm_bindgen]
+impl Universe {
     pub fn new(w: u32, h: u32) -> Universe {
+        set_panic_hook();
         let width = w;
         let height = h;
 
@@ -74,7 +99,14 @@ impl Universe {
                 let idx = self.get_index(row, col);
                 let cell = self.cells[idx];
                 let live_neigbors = self.live_neighbor_count(row, col);
-
+                // log!(
+                //         "cell[{}, {}] is initially {:?} and has {} live neighbors",
+                //         row,
+                //         col,
+                //         cell,
+                //         live_neigbors
+                //     );
+                    
                 let next_cell = match (cell, live_neigbors) {
                     // Rule 1: Any live cell with fewer than two live neighbours
                     // dies, as if caused by underpopulation.
@@ -91,10 +123,11 @@ impl Universe {
                     // All other cells remain in the same state.
                     (otherwise, _) => otherwise,
                 };
-
+                // log!("    it becomes {:?}", next_cell); 
                 next[idx] = next_cell;
             }
         }
+        self.cells = next;
     }
 
     fn get_index(&self, row: u32, column: u32) -> usize {
